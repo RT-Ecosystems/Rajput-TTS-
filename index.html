@@ -1,92 +1,176 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rajput TTS Pro - Merger Edition</title>
-    <style>
-        :root { --primary: #007bff; --bg: #f4f7f6; --white: #ffffff; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
-        header { background: var(--primary); color: white; width: 100%; padding: 15px 0; text-align: center; font-size: 22px; font-weight: bold; }
-        .container { width: 90%; max-width: 700px; background: var(--white); margin-top: 20px; padding: 25px; border-radius: 12px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        textarea { width: 100%; height: 250px; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; box-sizing: border-box; outline: none; }
-        .controls { margin-top: 15px; display: flex; gap: 10px; }
-        button { flex: 1; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        button:disabled { background: #ccc; }
-        #progress-container { margin-top: 20px; display: none; }
-        .progress-bar { width: 100%; background: #eee; height: 10px; border-radius: 5px; overflow: hidden; }
-        #progress-fill { width: 0%; height: 100%; background: var(--primary); transition: width 0.3s; }
-        #download-area { margin-top: 20px; text-align: center; }
-        .download-link { display: inline-block; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rajput TTS</title>
+
+<style>
+body{
+margin:0;
+padding:0;
+background:#111827;
+color:white;
+font-family:Arial,sans-serif;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+}
+
+.container{
+width:95%;
+max-width:900px;
+background:#1f2937;
+padding:20px;
+border-radius:18px;
+}
+
+h1{
+text-align:center;
+color:#facc15;
+}
+
+textarea{
+width:100%;
+height:320px;
+padding:15px;
+font-size:16px;
+background:#374151;
+color:white;
+border:none;
+border-radius:12px;
+box-sizing:border-box;
+resize:vertical;
+}
+
+.buttons{
+display:flex;
+gap:10px;
+margin-top:15px;
+flex-wrap:wrap;
+}
+
+button{
+flex:1;
+padding:12px;
+border:none;
+border-radius:10px;
+font-size:16px;
+font-weight:bold;
+cursor:pointer;
+}
+
+.play{background:#22c55e;color:white;}
+.stop{background:#ef4444;color:white;}
+.download{background:#3b82f6;color:white;}
+
+audio{
+width:100%;
+margin-top:20px;
+}
+</style>
 </head>
+
 <body>
 
-<header>RAJPUT TTS - UNLIMITED MERGER</header>
-
 <div class="container">
-    <textarea id="text-input" placeholder="अपना चैप्टर यहाँ पेस्ट करें..."></textarea>
-    <div class="controls">
-        <button id="start-btn">फुल ऑडियो जेनरेट करें</button>
-    </div>
+<h1>Rajput TTS</h1>
 
-    <div id="progress-container">
-        <div id="status-text">प्रोसेसिंग: 0%</div>
-        <div class="progress-bar"><div id="progress-fill"></div></div>
-    </div>
+<textarea id="text" placeholder="यहाँ कहानी पेस्ट करें..."></textarea>
 
-    <div id="download-area" id="download-area"></div>
+<div class="buttons">
+<button class="play" onclick="generateSpeech()">▶ सुनें</button>
+<button class="stop" onclick="stopSpeech()">⏹ रोकें</button>
+<button class="download" onclick="downloadAudio()">⬇ डाउनलोड</button>
+</div>
+
+<audio id="audioPlayer" controls></audio>
 </div>
 
 <script>
-    const startBtn = document.getElementById('start-btn');
-    const textInput = document.getElementById('text-input');
-    const progressFill = document.getElementById('progress-fill');
-    const statusText = document.getElementById('status-text');
-    const downloadArea = document.getElementById('download-area');
+const textarea = document.getElementById('text');
+const audioPlayer = document.getElementById('audioPlayer');
 
-    startBtn.addEventListener('click', async () => {
-        const text = textInput.value.trim();
-        if (!text) return alert("टेक्स्ट लिखें!");
+let audioBlob = null;
 
-        startBtn.disabled = true;
-        downloadArea.innerHTML = "";
-        document.getElementById('progress-container').style.display = 'block';
+function splitText(text, maxLength = 180) {
+const sentences = text.match(/[^.!?।]+[.!?।]?/g) || [];
+let chunks = [];
+let current = '';
 
-        // 200 अक्षरों के टुकड़े (Google API Limit)
-        const chunks = text.match(/[^.!?\s][^.!?]*[.!?\s]*/g) || [text];
-        let audioBlobs = [];
+for (let sentence of sentences) {
+if ((current + sentence).length > maxLength) {
+chunks.push(current.trim());
+current = sentence;
+} else {
+current += ' ' + sentence;
+}
+}
 
-        for (let i = 0; i < chunks.length; i++) {
-            statusText.innerText = `प्रोसेसिंग भाग: ${i + 1} / ${chunks.length}`;
-            progressFill.style.width = `${((i + 1) / chunks.length) * 100}%`;
+if (current.trim()) chunks.push(current.trim());
 
-            const url = `https://translate.google.com/translate_tts?ie=UTF-8&tl=hi-IN&client=tw-ob&q=${encodeURIComponent(chunks[i])}`;
-            
-            try {
-                const response = await fetch(url);
-                const blob = await response.blob();
-                audioBlobs.push(blob);
-                // API को ओवरलोड होने से बचाने के लिए छोटा ब्रेक
-                await new Promise(r => setTimeout(r, 150)); 
-            } catch (e) {
-                console.error("Error fetching chunk", i);
-            }
-        }
+return chunks;
+}
 
-        // सभी ब्लॉक्स को एक सिंगल फाइल में जोड़ना
-        const finalBlob = new Blob(audioBlobs, { type: 'audio/mpeg' });
-        const finalUrl = URL.createObjectURL(finalBlob);
+async function fetchAudioChunk(text) {
+const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=hi&client=tw-ob`;
 
-        downloadArea.innerHTML = `
-            <p style="color:green">बधाई हो! आपकी पूरी ऑडियोबुक तैयार है।</p>
-            <audio controls src="${finalUrl}"></audio><br><br>
-            <a href="${finalUrl}" download="Rajput_Full_Chapter.mp3" class="download-link">पूरा चैप्टर डाउनलोड करें (.MP3)</a>
-        `;
-        
-        statusText.innerText = "संपन्न! नीचे से डाउनलोड करें।";
-        startBtn.disabled = false;
-    });
+const response = await fetch(url);
+
+if (!response.ok) {
+throw new Error('TTS failed');
+}
+
+return await response.arrayBuffer();
+}
+
+async function generateSpeech() {
+const text = textarea.value.trim();
+
+if (!text) {
+alert('पहले टेक्स्ट लिखें');
+return;
+}
+
+try {
+const chunks = splitText(text);
+const audioBuffers = [];
+
+for (let chunk of chunks) {
+const data = await fetchAudioChunk(chunk);
+audioBuffers.push(data);
+}
+
+const blob = new Blob(audioBuffers, { type: 'audio/mpeg' });
+audioBlob = blob;
+
+const url = URL.createObjectURL(blob);
+audioPlayer.src = url;
+
+audioPlayer.play();
+
+} catch (e) {
+alert('ऑडियो बनाने में समस्या आई');
+}
+}
+
+function stopSpeech() {
+audioPlayer.pause();
+audioPlayer.currentTime = 0;
+}
+
+function downloadAudio() {
+if (!audioBlob) {
+alert('पहले ऑडियो बनाइए');
+return;
+}
+
+const a = document.createElement('a');
+a.href = URL.createObjectURL(audioBlob);
+a.download = 'rajput_tts.mp3';
+a.click();
+}
 </script>
 
 </body>
