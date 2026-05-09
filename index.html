@@ -1,176 +1,244 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rajput TTS</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Rajput TTS Pro</title>
 
 <style>
 body{
-margin:0;
-padding:0;
-background:#111827;
-color:white;
-font-family:Arial,sans-serif;
-display:flex;
-justify-content:center;
-align-items:center;
-min-height:100vh;
+    margin:0;
+    padding:20px;
+    background:#0f172a;
+    color:white;
+    font-family:Arial,sans-serif;
 }
 
 .container{
-width:95%;
-max-width:900px;
-background:#1f2937;
-padding:20px;
-border-radius:18px;
+    max-width:900px;
+    margin:auto;
+    background:#1e293b;
+    padding:20px;
+    border-radius:20px;
 }
 
 h1{
-text-align:center;
-color:#facc15;
+    text-align:center;
+    color:#facc15;
 }
 
 textarea{
-width:100%;
-height:320px;
-padding:15px;
-font-size:16px;
-background:#374151;
-color:white;
-border:none;
-border-radius:12px;
-box-sizing:border-box;
-resize:vertical;
+    width:100%;
+    height:350px;
+    padding:15px;
+    border:none;
+    border-radius:12px;
+    resize:vertical;
+    background:#334155;
+    color:white;
+    font-size:16px;
+    box-sizing:border-box;
 }
 
 .buttons{
-display:flex;
-gap:10px;
-margin-top:15px;
-flex-wrap:wrap;
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:15px;
 }
 
 button{
-flex:1;
-padding:12px;
-border:none;
-border-radius:10px;
-font-size:16px;
-font-weight:bold;
-cursor:pointer;
+    flex:1;
+    min-width:120px;
+    padding:14px;
+    border:none;
+    border-radius:12px;
+    font-size:16px;
+    font-weight:bold;
+    cursor:pointer;
 }
 
-.play{background:#22c55e;color:white;}
-.stop{background:#ef4444;color:white;}
-.download{background:#3b82f6;color:white;}
+.play{
+    background:#22c55e;
+    color:white;
+}
+
+.stop{
+    background:#ef4444;
+    color:white;
+}
+
+.download{
+    background:#3b82f6;
+    color:white;
+}
 
 audio{
-width:100%;
-margin-top:20px;
+    width:100%;
+    margin-top:20px;
 }
+
+.status{
+    margin-top:10px;
+    color:#cbd5e1;
+}
+
 </style>
 </head>
-
 <body>
 
 <div class="container">
-<h1>Rajput TTS</h1>
 
-<textarea id="text" placeholder="यहाँ कहानी पेस्ट करें..."></textarea>
+<h1>Rajput TTS Pro</h1>
+
+<textarea id="text" placeholder="यहाँ अपनी कहानी पेस्ट करें..."></textarea>
 
 <div class="buttons">
-<button class="play" onclick="generateSpeech()">▶ सुनें</button>
-<button class="stop" onclick="stopSpeech()">⏹ रोकें</button>
-<button class="download" onclick="downloadAudio()">⬇ डाउनलोड</button>
+    <button class="play" onclick="generateAudio()">▶ Generate Voice</button>
+    <button class="stop" onclick="stopAudio()">⏹ Stop</button>
+    <button class="download" onclick="downloadAudio()">⬇ Download MP3</button>
 </div>
 
-<audio id="audioPlayer" controls></audio>
+<div class="status" id="status">
+Ready...
+</div>
+
+<audio id="player" controls></audio>
+
 </div>
 
 <script>
-const textarea = document.getElementById('text');
-const audioPlayer = document.getElementById('audioPlayer');
 
-let audioBlob = null;
+const textArea = document.getElementById("text");
+const player = document.getElementById("player");
+const statusText = document.getElementById("status");
 
-function splitText(text, maxLength = 180) {
-const sentences = text.match(/[^.!?।]+[.!?।]?/g) || [];
-let chunks = [];
-let current = '';
+let finalBlob = null;
 
-for (let sentence of sentences) {
-if ((current + sentence).length > maxLength) {
-chunks.push(current.trim());
-current = sentence;
-} else {
-current += ' ' + sentence;
-}
-}
+function splitText(text, max=180){
 
-if (current.trim()) chunks.push(current.trim());
+    const sentences =
+    text.match(/[^.!?।]+[.!?।]?/g) || [];
 
-return chunks;
-}
+    let chunks = [];
+    let current = "";
 
-async function fetchAudioChunk(text) {
-const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=hi&client=tw-ob`;
+    for(let s of sentences){
 
-const response = await fetch(url);
+        if((current + s).length > max){
 
-if (!response.ok) {
-throw new Error('TTS failed');
-}
+            chunks.push(current.trim());
+            current = s;
 
-return await response.arrayBuffer();
-}
+        }else{
 
-async function generateSpeech() {
-const text = textarea.value.trim();
+            current += " " + s;
+        }
+    }
 
-if (!text) {
-alert('पहले टेक्स्ट लिखें');
-return;
+    if(current.trim()){
+        chunks.push(current.trim());
+    }
+
+    return chunks;
 }
 
-try {
-const chunks = splitText(text);
-const audioBuffers = [];
+async function getTTS(text){
 
-for (let chunk of chunks) {
-const data = await fetchAudioChunk(chunk);
-audioBuffers.push(data);
+    const url =
+`https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(text)}&tl=hi&client=tw-ob`;
+
+    const response = await fetch(url);
+
+    if(!response.ok){
+        throw new Error("TTS Error");
+    }
+
+    return await response.arrayBuffer();
 }
 
-const blob = new Blob(audioBuffers, { type: 'audio/mpeg' });
-audioBlob = blob;
+async function generateAudio(){
 
-const url = URL.createObjectURL(blob);
-audioPlayer.src = url;
+    const text = textArea.value.trim();
 
-audioPlayer.play();
+    if(!text){
+        alert("पहले टेक्स्ट लिखो");
+        return;
+    }
 
-} catch (e) {
-alert('ऑडियो बनाने में समस्या आई');
+    try{
+
+        statusText.innerText = "Generating audio...";
+
+        const chunks = splitText(text);
+
+        let buffers = [];
+
+        for(let i=0;i<chunks.length;i++){
+
+            statusText.innerText =
+            `Generating part ${i+1}/${chunks.length}`;
+
+            const data =
+            await getTTS(chunks[i]);
+
+            buffers.push(data);
+        }
+
+        finalBlob =
+        new Blob(buffers,{type:'audio/mpeg'});
+
+        const url =
+        URL.createObjectURL(finalBlob);
+
+        player.src = url;
+
+        player.play();
+
+        statusText.innerText =
+        "Audio ready!";
+
+    }catch(err){
+
+        console.error(err);
+
+        statusText.innerText =
+        "ERROR: Google blocked request or CORS issue.";
+
+        alert(
+`अगर GitHub Pages पर error आए
+तो Netlify/Vercel पर try करो.
+कुछ browsers Google TTS को block करते हैं.`
+);
+    }
 }
+
+function stopAudio(){
+
+    player.pause();
+    player.currentTime = 0;
 }
 
-function stopSpeech() {
-audioPlayer.pause();
-audioPlayer.currentTime = 0;
+function downloadAudio(){
+
+    if(!finalBlob){
+
+        alert("पहले audio generate करो");
+        return;
+    }
+
+    const a =
+    document.createElement("a");
+
+    a.href =
+    URL.createObjectURL(finalBlob);
+
+    a.download =
+    "rajput_tts.mp3";
+
+    a.click();
 }
 
-function downloadAudio() {
-if (!audioBlob) {
-alert('पहले ऑडियो बनाइए');
-return;
-}
-
-const a = document.createElement('a');
-a.href = URL.createObjectURL(audioBlob);
-a.download = 'rajput_tts.mp3';
-a.click();
-}
 </script>
 
 </body>
